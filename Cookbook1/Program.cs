@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -61,10 +62,15 @@ CookbookContextFactory cookbookContextFactory = new CookbookContextFactory();
 //CHANGE TRACKER experiment methods
 
 await EntityStates(cookbookContextFactory);
+await ChangeTracking(cookbookContextFactory);
+await AttachEntities(cookbookContextFactory);
+await NoTracking(cookbookContextFactory);
 
 
 static async Task EntityStates(CookbookContextFactory cookbookContextFactory)
 {
+    //entity states (Detached, Added, Unchanged, Modified, Deleted)
+
     using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
 
     //create object
@@ -96,6 +102,53 @@ static async Task EntityStates(CookbookContextFactory cookbookContextFactory)
     entityState = cookbookContext.Entry(newDish).State; // Detached (EF Change tracker knows nothing about the newDish object)
 }
 
+static async Task ChangeTracking(CookbookContextFactory cookbookContextFactory)
+{
+    //change tracker is specific to each data context
+    
+    using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
+
+    Dish newDish = new Dish { Title = "Foo", Notes = "Bar" };
+    cookbookContext.Dishes.Add(newDish);
+    await cookbookContext.SaveChangesAsync();
+    
+    newDish.Notes = "Baz";
+    EntityEntry entry = cookbookContext.Entry(newDish);
+    var originalValue = entry.OriginalValues[nameof(Dish.Notes)].ToString();
+    var dishFromDb = await cookbookContext.Dishes.SingleAsync(dish => dish.Id == newDish.Id); // because the object is allready in memory, it will NOT really be retrived from the DB, so we see the modified BUT UNSAVED value
+
+    using CookbookContext cookbookContext2 = cookbookContextFactory.CreateDbContext();
+    var dishFromDb2 = await cookbookContext2.Dishes.SingleAsync(dish => dish.Id == newDish.Id); // separate context, that dit not have the dish loaded into memory, so it does actually retrieve from the DB
+}
+
+static async Task AttachEntities(CookbookContextFactory cookbookContextFactory)
+{
+    //using the update method to update a Detached entity (attaches is + marks it as modified by default even if no prior knowledge about it)
+
+    using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
+    Dish newDish = new Dish { Title = "Foo", Notes = "Bar" };
+    cookbookContext.Dishes.Add(newDish);
+    await cookbookContext.SaveChangesAsync();
+
+    //"manually" forget the newDish object
+    cookbookContext.Entry(newDish).State = EntityState.Detached;
+
+    EntityState state = cookbookContext.Entry(newDish).State; //Detached
+
+    //using the "Update" method we cand attach an object to the context and mark it for updating when "SaveChanges" is called
+    cookbookContext.Dishes.Update(newDish);
+    await cookbookContext.SaveChangesAsync();
+}
+
+static async Task NoTracking(CookbookContextFactory cookbookContextFactory)
+{
+    using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
+
+    //SELECT * from dishes
+    Dish[] dishes = await cookbookContext.Dishes.AsNoTracking().ToArrayAsync();
+    EntityState state = cookbookContext.Entry(dishes[0]).State; // Detached
+
+}
 
 //the model class
 class Dish
