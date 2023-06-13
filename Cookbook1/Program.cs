@@ -5,48 +5,96 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 
 //context SETUP
 CookbookContextFactory cookbookContextFactory = new CookbookContextFactory();
-using CookbookContext cookbookContext =  cookbookContextFactory.CreateDbContext(args);
+//using CookbookContext cookbookContext =  cookbookContextFactory.CreateDbContext(args);
 
 
-//ADD
-Console.WriteLine("Add porridge for breakfast");
+////ADD
+//Console.WriteLine("Add porridge for breakfast");
 
-Dish dish = new Dish {Title = "Breakfast Porridge", Notes="This is very good", Stars = 4 };
-cookbookContext.Add(dish);
-await cookbookContext.SaveChangesAsync();
+//Dish dish = new Dish {Title = "Breakfast Porridge", Notes="This is very good", Stars = 4 };
+//cookbookContext.Add(dish);
+//await cookbookContext.SaveChangesAsync();
 
-Console.WriteLine($"Added porridge (id={dish.Id}) successfully");
+//Console.WriteLine($"Added porridge (id={dish.Id}) successfully");
 
-//READ (check stars for porridge)
-Console.WriteLine("Checking stars for porridge");
-List<Dish> dishes = await cookbookContext.Dishes
-    .Where(dish => dish.Title.Contains("Porridge"))
-    .ToListAsync(); // LINQ -> SQL by entity framework in the background
+////READ (check stars for porridge)
+//Console.WriteLine("Checking stars for porridge");
+//List<Dish> dishes = await cookbookContext.Dishes
+//    .Where(dish => dish.Title.Contains("Porridge"))
+//    .ToListAsync(); // LINQ -> SQL by entity framework in the background
 
-if (dishes.Count != 1)
-    Console.Error.WriteLine("Unexpected number of dishes found (!=1)");
+//if (dishes.Count != 1)
+//    Console.Error.WriteLine("Unexpected number of dishes found (!=1)");
 
-Console.WriteLine($"Porridge has {dishes[0].Stars} stars"); 
+//Console.WriteLine($"Porridge has {dishes[0].Stars} stars"); 
 
-//EDIT
-dish.Stars = 5;
-Console.WriteLine("Change porridge stars to 5");
-await cookbookContext.SaveChangesAsync();
-Console.WriteLine("Changed porridge stars to 5");
+////EDIT
+//dish.Stars = 5;
+//Console.WriteLine("Change porridge stars to 5");
+//await cookbookContext.SaveChangesAsync();
+//Console.WriteLine("Changed porridge stars to 5");
 
 
-//REMOVE
-Console.WriteLine($"Removing porridge from database");
-cookbookContext.Remove(dish);
-await cookbookContext.SaveChangesAsync();
-Console.WriteLine($"Porridge removed");
+////REMOVE
+//Console.WriteLine($"Removing porridge from database");
+//cookbookContext.Remove(dish);
+//await cookbookContext.SaveChangesAsync();
+//Console.WriteLine($"Porridge removed");
 
+
+////An experiment to prove existance of "change tracker"...
+//using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
+//Dish newDish = new Dish { Title = "Foo", Notes = "bar" };
+//cookbookContext.Dishes.Add(newDish);
+//await cookbookContext.SaveChangesAsync();
+//newDish.Notes = "Baz";
+//await cookbookContext.SaveChangesAsync(); // this will result in updating only the notes, so EF knows exactly what was changed - done via Change Tracker - part of the db context
+
+
+//CHANGE TRACKER experiment methods
+
+await EntityStates(cookbookContextFactory);
+
+
+static async Task EntityStates(CookbookContextFactory cookbookContextFactory)
+{
+    using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
+
+    //create object
+    Dish newDish = new Dish { Title = "Foo", Notes = "Bar" };
+    EntityState entityState = cookbookContext.Entry(newDish).State; // Detached (EF Change tracker knows nothing about the newDish object)
+
+    //add
+    cookbookContext.Dishes.Add(newDish);
+    entityState = cookbookContext.Entry(newDish).State; // Added (EF Change trackers knows about about this object)
+
+    //saved to db
+    await cookbookContext.SaveChangesAsync();
+    entityState = cookbookContext.Entry(newDish).State; // Unchanged (EF Change trackers knows about about this object and there are NO changes compared to the DB)
+
+    //modified
+    newDish.Notes = "Baz";
+    entityState = cookbookContext.Entry(newDish).State; // Modified (EF Change trackers knows about about this object and there ARE changes compared to the DB)
+
+    //saved to db
+    await cookbookContext.SaveChangesAsync();
+    entityState = cookbookContext.Entry(newDish).State; // Unchanged (EF Change trackers knows about about this object and there ARE changes compared to the DB)
+
+    //remove
+    cookbookContext.Dishes.Remove(newDish);
+    entityState = cookbookContext.Entry(newDish).State; // Deleted (EF Change trackers knows about about this object and compared to the DB it is Deleted)
+
+    //saved to db
+    await cookbookContext.SaveChangesAsync();
+    entityState = cookbookContext.Entry(newDish).State; // Detached (EF Change tracker knows nothing about the newDish object)
+}
 
 
 //the model class
@@ -97,7 +145,7 @@ class CookbookContext : DbContext
 
 class CookbookContextFactory : IDesignTimeDbContextFactory<CookbookContext>
 {
-    public CookbookContext CreateDbContext(string[] args)
+    public CookbookContext CreateDbContext(string[] args = null)
     {
         var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
 
