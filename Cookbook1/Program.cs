@@ -7,7 +7,44 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
-Console.WriteLine("Hello, World!");
+
+//context SETUP
+CookbookContextFactory cookbookContextFactory = new CookbookContextFactory();
+using CookbookContext cookbookContext =  cookbookContextFactory.CreateDbContext(args);
+
+
+//ADD
+Console.WriteLine("Add porridge for breakfast");
+
+Dish dish = new Dish {Title = "Breakfast Porridge", Notes="This is very good", Stars = 4 };
+cookbookContext.Add(dish);
+await cookbookContext.SaveChangesAsync();
+
+Console.WriteLine($"Added porridge (id={dish.Id}) successfully");
+
+//READ (check stars for porridge)
+Console.WriteLine("Checking stars for porridge");
+List<Dish> dishes = await cookbookContext.Dishes
+    .Where(dish => dish.Title.Contains("Porridge"))
+    .ToListAsync(); // LINQ -> SQL by entity framework in the background
+
+if (dishes.Count != 1)
+    Console.Error.WriteLine("Unexpected number of dishes found (!=1)");
+
+Console.WriteLine($"Porridge has {dishes[0].Stars} stars"); 
+
+//EDIT
+dish.Stars = 5;
+Console.WriteLine("Change porridge stars to 5");
+await cookbookContext.SaveChangesAsync();
+Console.WriteLine("Changed porridge stars to 5");
+
+
+//REMOVE
+Console.WriteLine($"Removing porridge from database");
+cookbookContext.Remove(dish);
+await cookbookContext.SaveChangesAsync();
+Console.WriteLine($"Porridge removed");
 
 
 
