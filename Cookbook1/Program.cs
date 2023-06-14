@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
@@ -65,9 +65,33 @@ await ChangeTracking(cookbookContextFactory);
 await AttachEntities(cookbookContextFactory);
 await NoTracking(cookbookContextFactory);
 
+//RAW SQL
 await RawSql(cookbookContextFactory);
 
-//RAW SQL
+//TRANSACTIONS
+await Transactions(cookbookContextFactory);
+
+static async Task Transactions(CookbookContextFactory cookbookContextFactory)
+{
+    using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
+
+    using var transaction = await cookbookContext.Database.BeginTransactionAsync();
+
+    try
+    {
+        cookbookContext.Dishes.Add(new Dish { Title = "Foo", Notes = "Bar" });
+        await cookbookContext.SaveChangesAsync();
+
+        await cookbookContext.Database.ExecuteSqlRawAsync("SELECT 1/0 as Bad");
+
+        await transaction.CommitAsync(); //this commits the transactions, if this is not reached, nothing since transacation was started will actually be saved in the DB
+    }
+    catch(SqlException ex)
+    {
+        Console.Error.WriteLine($"Something bad happened: {ex.Message}");
+    }
+}
+
 static async Task RawSql(CookbookContextFactory cookbookContextFactory)
 {
     using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
