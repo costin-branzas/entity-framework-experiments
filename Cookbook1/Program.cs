@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq.Expressions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -60,18 +61,52 @@ CookbookContextFactory cookbookContextFactory = new CookbookContextFactory();
 
 
 //CHANGE TRACKER experiment methods
-await EntityStates(cookbookContextFactory);
-await ChangeTracking(cookbookContextFactory);
-await AttachEntities(cookbookContextFactory);
-await NoTracking(cookbookContextFactory);
+//await EntityStates(cookbookContextFactory);
+//await ChangeTracking(cookbookContextFactory);
+//await AttachEntities(cookbookContextFactory);
+//await NoTracking(cookbookContextFactory);
 
 //RAW SQL
-await RawSql(cookbookContextFactory);
+//await RawSql(cookbookContextFactory);
 
 //TRANSACTIONS
-await Transactions(cookbookContextFactory);
+//await Transactions(cookbookContextFactory);
 
-static async Task Transactions(CookbookContextFactory cookbookContextFactory)
+//EXPRESSION TREE
+await ExpressionTree(cookbookContextFactory);
+
+static async Task ExpressionTree(CookbookContextFactory cookbookContextFactory)
+{
+    /* Normal compilation flow:
+     * code we write -> C# compiler -> IL (intermediate Language(an object-oriented assembly language)) -> JustInTime Compiler -> Machine language
+    */
+    using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
+
+    Dish newDish = new Dish { Title = "Foo", Notes = "Bar" };
+    cookbookContext.Dishes.Add(newDish);
+    await cookbookContext.SaveChangesAsync();
+
+    //Question: where does the linq query get translated to SQL? It is NOT done by the C# compiler, entity framework translates to SQL AFTER compilation, At Run-time using Expression trees
+    Dish[] dishes = await cookbookContext.Dishes
+        .Where(dish => dish.Title.StartsWith("F")) // << the Where clause receives as a parameter NOT a Func but a Function<Funct<....>>
+        .ToArrayAsync();
+
+    //example where syntax is not preserved until run-time
+    Dish[] inMemoryDishes = new Dish[] { new Dish { Title = "Foo", Notes = "Bar" }, new Dish { Title = "Foo2", Notes = "Bar2" } };
+    dishes = inMemoryDishes
+        .Where(dish => dish.Title.StartsWith("F"))// << the Where clause HERE receives a Func as a parameter NOT Function<Funct<....>> (because it no longer needs to be translated to SQL at run-time)
+        .ToArray(); ; 
+
+
+    //different types used above:
+    Func<Dish, bool> f = dish => dish.Title.StartsWith("F"); // known as "Lambda expression", this gets translated to a clasic method (can be inspected in the debugger) at compile time which EF can;t interpret, read, translate to SQL
+
+    Expression<Func<Dish, bool>> exf = dish => dish.Title.StartsWith("F"); // if inspecting this at run time (after compilation to IL), it becomes apparent that the information is preserved so that it can then be translated to SQL
+
+}
+
+
+    static async Task Transactions(CookbookContextFactory cookbookContextFactory)
 {
     using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
 
