@@ -60,12 +60,38 @@ CookbookContextFactory cookbookContextFactory = new CookbookContextFactory();
 
 
 //CHANGE TRACKER experiment methods
-
 await EntityStates(cookbookContextFactory);
 await ChangeTracking(cookbookContextFactory);
 await AttachEntities(cookbookContextFactory);
 await NoTracking(cookbookContextFactory);
 
+await RawSql(cookbookContextFactory);
+
+//RAW SQL
+static async Task RawSql(CookbookContextFactory cookbookContextFactory)
+{
+    using CookbookContext cookbookContext = cookbookContextFactory.CreateDbContext();
+
+    //manual sql queries, however we still have all EF functionality (loading data into the model classes, change tracking)
+    
+    //fixed
+    Dish[] dishes = await cookbookContext.Dishes.FromSqlRaw("SELECT * FROM Dishes").ToArrayAsync();
+
+    //with parameters
+    string filter = "%z";
+    dishes = await cookbookContext.Dishes.FromSqlInterpolated($"SELECT * FROM Dishes WHERE Notes LIKE {filter}").ToArrayAsync();
+
+    //BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD
+    //BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD
+    //BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD
+    //SQL injection!!!
+    //filter might be: "%z; DELETE FROM Dishes;"
+    dishes = await cookbookContext.Dishes.FromSqlRaw("SELECT * FROM Dishes WHERE Notes LIKE '" + filter + "'").ToArrayAsync();
+
+    //writing statements that affect data but do not return data
+    await cookbookContext.Database.ExecuteSqlRawAsync("DELETE FROM Dishes WHERE Id NOT IN (SELECT DishId FROM Ingredients)"); //delete all dishes that do not have ingredients?
+
+}
 
 static async Task EntityStates(CookbookContextFactory cookbookContextFactory)
 {
