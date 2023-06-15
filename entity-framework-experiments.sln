@@ -5,6 +5,8 @@ VisualStudioVersion = 17.5.33424.131
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cookbook1", "Cookbook1\Cookbook1.csproj", "{0FD576CB-BAC4-4C91-A6A2-64222E178215}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityFrameWorkRelations", "EntityFrameWorkRelations\EntityFrameWorkRelations.csproj", "{B11FA96A-2694-486F-9F4E-B31C219814D7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{0FD576CB-BAC4-4C91-A6A2-64222E178215}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0FD576CB-BAC4-4C91-A6A2-64222E178215}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0FD576CB-BAC4-4C91-A6A2-64222E178215}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B11FA96A-2694-486F-9F4E-B31C219814D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B11FA96A-2694-486F-9F4E-B31C219814D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B11FA96A-2694-486F-9F4E-B31C219814D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B11FA96A-2694-486F-9F4E-B31C219814D7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
