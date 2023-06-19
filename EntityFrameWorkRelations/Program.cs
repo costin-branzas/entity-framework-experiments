@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -9,11 +10,58 @@ using System.ComponentModel.DataAnnotations.Schema;
 BrickContextFactory factory = new BrickContextFactory();
 using BrickContext context = factory.CreateDbContext();
 
-await AddData();
-Console.WriteLine($"Done adding data to DB.");
+//await AddData();
+//Console.WriteLine($"Done adding data to DB.");
 
+await QueryData();
+Console.WriteLine($"Done querying data from DB.");
 
+async Task QueryData()
+{
+    // basic includes
+    BrickAvailability[] brickAvailabilities = await context.BrickAvailabilities
+        .Include(brickAvailability => brickAvailability.Brick) // "hey EF, please also include the related Brick" (translated to a JOIN in SQL)
+        .Include(brickAvailability => brickAvailability.Vendor) // "hey EF, please also include the related Vendor" (translated to a JOIN in SQL)
+        .ToArrayAsync();
 
+    foreach (BrickAvailability brickAvailability in brickAvailabilities)
+    {
+        Console.WriteLine($"Brick {brickAvailability.Brick.Title} available at {brickAvailability.Vendor.VendorName} for {brickAvailability.PriceEur}");
+    }
+
+    Console.WriteLine();
+
+    //multi layer include
+    Brick[] bricksWithVendorsAndTags = await context.Bricks
+        .Include($"{nameof(Brick.Availability)}.{nameof(BrickAvailability.Vendor)}") // this goes and loads related entities thaat are "2 levels away", first goes into availability table, then into the vendor table
+        .Include(brick => brick.Tags)
+        //.Where(brick => brick.Tags.Any(tag => tag.Title == "Minecraft")) // if we were to reference tags in a Where call, tags would be loaded automatically without the need for the Include call above
+        .ToArrayAsync();
+
+    foreach(Brick brickWithVendorsAndTags in bricksWithVendorsAndTags)
+    {
+        Console.Write($"Brick {brickWithVendorsAndTags.Title}");
+        if (brickWithVendorsAndTags.Tags.Any())
+        {
+            Console.Write($" ({string.Join(", ", brickWithVendorsAndTags.Tags.Select(tag => tag.Title))})");
+        }
+        if (brickWithVendorsAndTags.Availability.Any())
+        {
+            Console.Write($" is available at {string.Join(", ", brickWithVendorsAndTags.Availability.Select(brickAvailability => brickAvailability.Vendor.VendorName))}");
+        }
+    }
+    Console.WriteLine();
+
+    //how to load related data, at a later time, AFTER intial query:
+    Brick[] bricks = await context.Bricks.ToArrayAsync();
+    foreach (Brick brick in bricks)
+    {
+        await context.Entry(brick).Collection(brick => brick.Tags).LoadAsync(); // this loads the tags for the brick
+        
+        Console.Write($"Brick {brick.Title}");
+        Console.Write($" ({string.Join(", ", brick.Tags.Select(tag => tag.Title))})");
+    }
+}
 
 async Task AddData()
 {
@@ -176,7 +224,7 @@ class BrickContextFactory : IDesignTimeDbContextFactory<BrickContext>
         optionsBuilder
             // Uncomment the following line if you want to print generated
             // SQL statements on the console.
-            // .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()))
+            .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()))
             .UseSqlServer(configuration["ConnectionStrings:DefaultConnection"]);
 
         return new BrickContext(optionsBuilder.Options);
