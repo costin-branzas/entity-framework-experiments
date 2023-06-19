@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -15,6 +16,7 @@ enum Color
     Green
 }
 
+#region Model
 class Brick
 {
     public int Id { get; set; }
@@ -27,11 +29,11 @@ class Brick
 
     //BASIC many to many relationship (EF will auto create the many-to-many relation table) (1 brick can have mutiple tags, 1 tag can corespond to mutiple bricks)
     //what tags does this brick have?
-    public List<Tag> Tags { get; set; }
+    public List<Tag> Tags { get; set; } = new();
 
     //one to many relationship (one brick can have mutiple availabilities)
     //what vendors have this brick available?
-    public List<BrickAvailability> Availability { get; set; }
+    public List<BrickAvailability> Availability { get; set; } = new();
 }
 
 class BasePlate : Brick
@@ -55,7 +57,7 @@ class Tag
 
     //many to many relationship: 1 brick can have mutiple tags, 1 tag can corespond to mutiple bricks
     //what bricks does this tag apply to?
-    public List<Brick> Bricks { get; set; }
+    public List<Brick> Bricks { get; set; } = new();
 }
 
 class Vendor
@@ -90,4 +92,26 @@ class BrickAvailability
 
     [Column(TypeName="decimal(8, 2)")] // 8 digits, 2 of them being precision after comma
     public decimal PriceEur { get; set; }
+}
+#endregion
+
+class BrickContext : DbContext
+{
+    public BrickContext(DbContextOptions<BrickContext> options) : base(options)
+    {}
+
+    public DbSet<Brick> Bricks { get; set; }
+
+    public DbSet<Vendor> Vendors { get; set; }
+    
+    public DbSet<BrickAvailability> BrickAvailabilities { get; set; }
+    
+    public DbSet<Tag> Tags { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<BasePlate>().HasBaseType<Brick>();
+        modelBuilder.Entity<MinifigHead>().HasBaseType<Brick>();
+    }
+
 }
