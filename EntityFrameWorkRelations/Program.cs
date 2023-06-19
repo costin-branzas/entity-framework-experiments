@@ -38,6 +38,7 @@ class Brick
     public List<BrickAvailability> Availability { get; set; } = new();
 }
 
+//BasePlate & MinifigHead are derived classes, EF will create a SINGLE DB table for the entire inheritanche hierarchy (aka "(1) table per hierarchy")
 class BasePlate : Brick
 {
     public int Length { get; set; }
@@ -112,6 +113,7 @@ class BrickContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        //BasePlate & MinifigHead are derived classes, EF will create a SINGLE DB table for the entire inheritanche hierarchy (aka "(1) table per hierarchy")
         modelBuilder.Entity<BasePlate>().HasBaseType<Brick>();
         modelBuilder.Entity<MinifigHead>().HasBaseType<Brick>();
     }
