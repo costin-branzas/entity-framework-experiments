@@ -18,7 +18,7 @@ Console.WriteLine($"Done querying data from DB.");
 
 async Task QueryData()
 {
-    // basic includes
+    // basic includes ("eager loading")
     BrickAvailability[] brickAvailabilities = await context.BrickAvailabilities
         .Include(brickAvailability => brickAvailability.Brick) // "hey EF, please also include the related Brick" (translated to a JOIN in SQL)
         .Include(brickAvailability => brickAvailability.Vendor) // "hey EF, please also include the related Vendor" (translated to a JOIN in SQL)
@@ -52,7 +52,7 @@ async Task QueryData()
     }
     Console.WriteLine();
 
-    //how to load related data, at a later time, AFTER intial query:
+    //how to load related data, at a later time, AFTER intial query ("lazy" loading):
     Brick[] bricks = await context.Bricks.ToArrayAsync();
     foreach (Brick brick in bricks)
     {
