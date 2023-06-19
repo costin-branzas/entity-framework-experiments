@@ -5,9 +5,56 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-Console.WriteLine("Hello, World!");
+
+BrickContextFactory factory = new BrickContextFactory();
+using BrickContext context = factory.CreateDbContext();
+
+await AddData();
+Console.WriteLine($"Done adding data to DB.");
 
 
+
+
+async Task AddData()
+{
+    //vendors
+    Vendor brickKing, brickDepot;
+    await context.AddRangeAsync(new[] 
+    { 
+        brickKing = new Vendor() { VendorName = "Brick King" },
+        brickDepot = new Vendor() { VendorName = "Brick Depot" },
+    });
+    await context.SaveChangesAsync();
+
+    //tags
+    Tag rare, ninjago, minecraft;
+    await context.AddRangeAsync(new[]
+    {
+        rare = new Tag() { Title = "Rare" },
+        ninjago = new Tag() { Title = "Ninjago" },
+        minecraft = new Tag() { Title = "Minecraft" },
+        
+    });
+    await context.SaveChangesAsync();
+
+    //adding a baseplate
+    await context.AddAsync(new BasePlate 
+    { 
+        Title = "BasePlate 16 x 16 with blue watter pattern", 
+        Color = Color.Green, 
+        Tags = new() { rare, minecraft }, // adding "many to many"
+        Length = 16,
+        Width = 16,
+        Availability = new List<BrickAvailability> // adding "many to one"
+        { 
+            new BrickAvailability(){ Vendor = brickKing, AvailableAmount = 5, PriceEur = 6.5m },
+            new BrickAvailability(){ Vendor = brickDepot, AvailableAmount = 10, PriceEur = 5.9m },
+        }
+    });
+    await context.SaveChangesAsync();
+}
+
+#region Model
 enum Color
 {
     Black, //will get saved as 0 in the DB
@@ -18,7 +65,6 @@ enum Color
     Green
 }
 
-#region Model
 class Brick
 {
     public int Id { get; set; }
@@ -98,6 +144,7 @@ class BrickAvailability
 }
 #endregion
 
+#region Data Context
 class BrickContext : DbContext
 {
     public BrickContext(DbContextOptions<BrickContext> options) : base(options)
@@ -135,3 +182,4 @@ class BrickContextFactory : IDesignTimeDbContextFactory<BrickContext>
         return new BrickContext(optionsBuilder.Options);
     }
 }
+#endregion
